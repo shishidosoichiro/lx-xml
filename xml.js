@@ -53,6 +53,7 @@
 
 	var tokenize = __webpack_require__(2);
 	var dom = __webpack_require__(6);
+	var stringify = __webpack_require__(7);
 
 	module.exports = function(string){
 	  var tokens = tokenize(string);
@@ -61,7 +62,7 @@
 
 	module.exports.tokenize = tokenize;
 	module.exports.dom = dom;
-	  console.log(1)
+	module.exports.stringify = stringify;
 
 
 /***/ },
@@ -380,7 +381,6 @@
 	      attr = undefined;
 	    }
 	    else if (token.name === 'tag.head.shortend') {
-	      console.log(token)
 	      current.status = 'closed';
 	      current = stack[stack.length - 1];;
 	      stack.pop();
@@ -395,18 +395,80 @@
 	      current.status = 'attr eq: ' + attr.value;
 	    }
 	    else if (token.name === 'attr.value' && attr) {
-	      var value = current.attrs[attr.value] = token.value;
+	      var value = current.attrs[attr.value] = unescape(token.value);
 	      value.index = token.index;
 	      current.status = 'attr value: ' + attr.value;
 	      attr = undefined;
 	    }
 	    else if (token.name === 'text') {
 	      token.value.index = token.index;
-	      current.children.push(token.value);
+	      current.children.push(unescape(token.value));
 	      attr = undefined;
 	    }
+	    else {
+	      throw new Error('unknown token.');
+	    }
 	  }
-	  return top.children;
+	  return top.children[0];
+	};
+
+	var regex = {
+	  amp: /\&amp\;/g,
+	  lt: /\&lt\;/g,
+	  gt: /\&gt\;/g,
+	  quot: /\&quot\;/g,
+	  squot: /\&\#039\;/g
+	};
+	var unescape = function(str) {
+	  return str.replace(regex.amp, '&')
+	            .replace(regex.lt, '<')
+	            .replace(regex.gt, '>')
+	            .replace(regex.quot, '"')
+	            .replace(regex.squot, '\'');
+	};
+
+
+/***/ },
+/* 7 */
+/***/ function(module, exports) {
+
+	var stringify = module.exports = function(dom){
+	  if (typeof dom === 'string') {
+	    return escape(dom);
+	  }
+	  else if (dom.children.length === 0) {
+	    return '<' + dom.tag + attrs(dom.attrs) + ' />';
+	  }
+	  else {
+	    var string = '';
+	    string += '<' + dom.tag +  attrs(dom.attrs) + ' >';
+	    string += dom.children.map(stringify).join('');
+	    string += '</' + dom.tag + '>';
+	    return string;
+	  }
+	};
+
+	var attrs = function(attrs){
+	  var string = '';
+	  for (var name in attrs) {
+	    string += ' ' + name + '="' + attrs[name] + '"';
+	  }
+	  return string;
+	};
+
+	var regex = {
+		amp: /&/g,
+	  lt: /</g,
+	  gt: />/g,
+	  quot: /"/g,
+	  squot: /'/g
+	};
+	var escape = function(str) {
+	  return str.replace(regex.amp, '&amp;')
+	            .replace(regex.lt, '&lt;')
+	            .replace(regex.gt, '&gt;')
+	            .replace(regex.quot, '&quot;')
+	            .replace(regex.squot, '&#039;');
 	};
 
 
